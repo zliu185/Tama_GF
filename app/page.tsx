@@ -15,7 +15,7 @@ interface PetPayload {
 }
 
 interface EasterEggPayload {
-  message?: string;
+  message: string;
   error?: string;
 }
 
@@ -58,7 +58,7 @@ export default function HomePage() {
   const [testNow] = useState<Date>(() => new Date());
   const [imageTapCount, setImageTapCount] = useState(0);
   const [showEasterEgg, setShowEasterEgg] = useState(false);
-  const [easterEggMessage, setEasterEggMessage] = useState('宝宝我爱你 - ZL');
+  const [easterEggMessage, setEasterEggMessage] = useState('');
   const tapResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const buildApiUrl = useCallback((path: string, now: Date) => {
@@ -72,9 +72,9 @@ export default function HomePage() {
       if (!response.ok) {
         throw new Error(payload.error ?? '获取彩蛋文案失败');
       }
-      setEasterEggMessage(payload.message?.trim() ? payload.message : '宝宝我爱你 - ZL');
+      setEasterEggMessage(payload.message);
     } catch {
-      setEasterEggMessage('宝宝我爱你 - ZL');
+      setEasterEggMessage('彩蛋加载失败，请重试');
     }
 
     setShowEasterEgg(true);
@@ -220,9 +220,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {imageTapCount > 0 && (
-          <p className="text-xs text-plum/50">彩蛋进度：{imageTapCount}/5</p>
-        )}
+        {imageTapCount > 0 && <p className="text-xs text-plum/50">彩蛋进度：{imageTapCount}/5</p>}
       </section>
     </main>
   );
