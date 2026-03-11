@@ -14,6 +14,36 @@ interface PetPayload {
   error?: string;
 }
 
+const DAILY_DIALOGUES = {
+  happy: ['今天的我元气满满，想和你贴贴。', '有你在身边，我今天超开心。', '心情很好，我们一起玩吧！'],
+  hungry: ['肚子咕咕叫了，想吃点好吃的。', '我有点饿了，能喂我吗？', '闻到香香的味道了吗，我饿啦。'],
+  sleepy: ['眼皮有点重，想靠着你休息。', '今天有点困，抱抱我吧。', '呼噜呼噜，我想睡一会儿。'],
+  normal: ['今天也想和你一起度过。', '你来看我啦，我很安心。', '我在这里等你，一起慢慢长大。']
+} as const;
+
+type DialogueMood = keyof typeof DAILY_DIALOGUES;
+
+function resolveDialogueMood(pet: Pet): DialogueMood {
+  if (pet.hunger <= 30) return 'hungry';
+  if (pet.energy <= 30 || pet.is_sleeping) return 'sleepy';
+  if (pet.mood >= 70) return 'happy';
+  return 'normal';
+}
+
+function pickDailyDialogue(pet: Pet, now: Date): string {
+  const mood = resolveDialogueMood(pet);
+  const messages = DAILY_DIALOGUES[mood];
+  const dateKey = now.toISOString().slice(0, 10);
+  const seedText = `${pet.id}-${dateKey}`;
+
+  let hash = 0;
+  for (let index = 0; index < seedText.length; index += 1) {
+    hash = (hash * 31 + seedText.charCodeAt(index)) >>> 0;
+  }
+
+  return messages[hash % messages.length];
+}
+
 export default function HomePage() {
   const [pet, setPet] = useState<Pet | null>(null);
   const [dialogue, setDialogue] = useState('');
@@ -37,7 +67,7 @@ export default function HomePage() {
           throw new Error(payload.error ?? '拉取宠物状态失败');
         }
         setPet(payload.pet);
-        setDialogue(payload.dialogue);
+        setDialogue(pickDailyDialogue(payload.pet, now));
         setStatus('success');
         setMessage('');
       } catch (error) {
