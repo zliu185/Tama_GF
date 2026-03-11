@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActionButtons } from '@/components/ActionButtons';
 import { DialogueBubble } from '@/components/DialogueBubble';
 import { PetCard } from '@/components/PetCard';
@@ -11,6 +11,11 @@ interface PetPayload {
   pet: Pet;
   dialogue: string;
   note?: string;
+  error?: string;
+}
+
+interface EasterEggPayload {
+  message?: string;
   error?: string;
 }
 
@@ -51,9 +56,55 @@ export default function HomePage() {
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [testNow] = useState<Date>(() => new Date());
+  const [imageTapCount, setImageTapCount] = useState(0);
+  const [showEasterEgg, setShowEasterEgg] = useState(false);
+  const [easterEggMessage, setEasterEggMessage] = useState('宝宝我爱你 - ZL');
+  const tapResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const buildApiUrl = useCallback((path: string, now: Date) => {
     return `${path}?now=${encodeURIComponent(now.toISOString())}`;
+  }, []);
+
+  const showLoveMessage = useCallback(async () => {
+    try {
+      const response = await fetch('/api/pet/easter-egg-message', { cache: 'no-store' });
+      const payload = (await response.json()) as EasterEggPayload;
+      if (!response.ok) {
+        throw new Error(payload.error ?? '获取彩蛋文案失败');
+      }
+      setEasterEggMessage(payload.message?.trim() ? payload.message : '宝宝我爱你 - ZL');
+    } catch {
+      setEasterEggMessage('宝宝我爱你 - ZL');
+    }
+
+    setShowEasterEgg(true);
+  }, []);
+
+  const onPetImageClick = useCallback(() => {
+    if (tapResetTimerRef.current) {
+      clearTimeout(tapResetTimerRef.current);
+    }
+
+    setImageTapCount((previous) => {
+      const next = previous + 1;
+      if (next >= 5) {
+        void showLoveMessage();
+        return 0;
+      }
+      return next;
+    });
+
+    tapResetTimerRef.current = setTimeout(() => {
+      setImageTapCount(0);
+    }, 3000);
+  }, [showLoveMessage]);
+
+  useEffect(() => {
+    return () => {
+      if (tapResetTimerRef.current) {
+        clearTimeout(tapResetTimerRef.current);
+      }
+    };
   }, []);
 
   const fetchState = useCallback(
@@ -142,7 +193,7 @@ export default function HomePage() {
           <p className="mt-1 text-base font-medium text-plum">{displayTime}</p>
         </div>
 
-        {pet ? <PetCard pet={pet} /> : <div className="rounded-2xl bg-white p-6 text-center">加载中...</div>}
+        {pet ? <PetCard pet={pet} onImageClick={onPetImageClick} /> : <div className="rounded-2xl bg-white p-6 text-center">加载中...</div>}
 
         <DialogueBubble text={dialogue || '今天也要一起照顾 Mochi。'} />
 
@@ -153,6 +204,25 @@ export default function HomePage() {
         {status === 'loading' && <p className="text-sm text-plum/70">处理中...</p>}
         {status === 'error' && <p className="text-sm text-red-500">{message}</p>}
         {status === 'success' && message && <p className="text-sm text-emerald-600">{message}</p>}
+
+        {showEasterEgg && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-soft">
+              <p className="text-lg font-semibold text-plum">{easterEggMessage}</p>
+              <button
+                type="button"
+                className="mt-4 rounded-lg bg-berry px-4 py-2 text-sm font-medium text-white hover:bg-berry/90"
+                onClick={() => setShowEasterEgg(false)}
+              >
+                知道啦
+              </button>
+            </div>
+          </div>
+        )}
+
+        {imageTapCount > 0 && (
+          <p className="text-xs text-plum/50">彩蛋进度：{imageTapCount}/5</p>
+        )}
       </section>
     </main>
   );

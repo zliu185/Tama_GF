@@ -3,6 +3,7 @@ import { Pet } from '@/lib/pet/types';
 
 interface PetCardProps {
   pet: Pet;
+  onImageClick?: () => void;
 }
 
 function getPetImage(pet: Pet): string {
@@ -27,12 +28,16 @@ function stageLabel(stage: Pet['stage']): string {
   }
 }
 
-export function PetCard({ pet }: PetCardProps) {
+export function PetCard({ pet, onImageClick }: PetCardProps) {
   return (
     <div className="rounded-3xl border border-rosemilk bg-white/95 p-5 shadow-soft">
-      <div className="relative mx-auto mb-4 h-40 w-40 overflow-hidden rounded-2xl bg-blush">
+      <button
+        type="button"
+        className="relative mx-auto mb-4 block h-40 w-40 overflow-hidden rounded-2xl bg-blush"
+        onClick={onImageClick}
+      >
         <Image src={getPetImage(pet)} alt={pet.name} fill priority className="object-cover" />
-      </div>
+      </button>
       <div className="text-center">
         <h1 className="text-2xl font-semibold text-plum">{pet.name}</h1>
         <p className="mt-1 text-sm text-plum/70">Stage: {stageLabel(pet.stage)}</p>

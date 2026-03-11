@@ -5,6 +5,8 @@ import { runPetAction } from '@/lib/pet/actions';
 import { Pet, PetActionType } from '@/lib/pet/types';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
+const DEFAULT_EASTER_EGG_MESSAGE = '宝宝我爱你 - ZL';
+
 function asPet(record: Record<string, unknown>): Pet {
   return {
     id: String(record.id),
@@ -30,7 +32,7 @@ function asPet(record: Record<string, unknown>): Pet {
   };
 }
 
-async function ensureSingleUserAndPet(): Promise<Pet> {
+export async function ensureSingleUserAndPet(): Promise<Pet> {
   const supabase = createSupabaseServerClient();
 
   const { error: userError } = await supabase.from('users_profile').upsert(
@@ -169,6 +171,46 @@ export async function applyAction(action: PetActionType, nowDate: Date = new Dat
     dialogue: buildDialogue(saved),
     note
   };
+}
+
+export async function getEasterEggMessage(): Promise<string> {
+  const supabase = createSupabaseServerClient();
+  const pet = await ensureSingleUserAndPet();
+
+  const { data, error } = await supabase
+    .from('special_events')
+    .select('payload')
+    .eq('pet_id', pet.id)
+    .eq('event_type', 'easter_egg_message')
+    .eq('title', 'love_note')
+    .order('trigger_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to read easter egg message: ${error.message}`);
+  }
+
+  const payload = (data?.payload ?? null) as Record<string, unknown> | null;
+  const customMessage = typeof payload?.message === 'string' ? payload.message : null;
+  if (customMessage && customMessage.trim().length > 0) {
+    return customMessage;
+  }
+
+  const { error: insertError } = await supabase.from('special_events').insert({
+    pet_id: pet.id,
+    event_type: 'easter_egg_message',
+    title: 'love_note',
+    payload: { message: DEFAULT_EASTER_EGG_MESSAGE },
+    trigger_at: new Date().toISOString(),
+    consumed_at: null
+  });
+
+  if (insertError) {
+    throw new Error(`Failed to seed easter egg message: ${insertError.message}`);
+  }
+
+  return DEFAULT_EASTER_EGG_MESSAGE;
 }
 
 export function okJson<T>(payload: T) {
