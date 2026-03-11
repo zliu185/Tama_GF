@@ -67,7 +67,7 @@ export default function HomePage() {
 
   const showLoveMessage = useCallback(async () => {
     try {
-      const response = await fetch('/api/pet/easter-egg-message', { cache: 'no-store' });
+      const response = await fetch(`/api/pet/easter-egg-message?t=${Date.now()}`, { cache: 'no-store' });
       const payload = (await response.json()) as EasterEggPayload;
       if (!response.ok) {
         throw new Error(payload.error ?? '获取彩蛋文案失败');
@@ -225,3 +225,4 @@ export default function HomePage() {
     </main>
   );
 }
+
